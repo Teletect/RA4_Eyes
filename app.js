@@ -7,7 +7,7 @@ const state = {
   frozen: false,
   mode: "manual",
   lastSample: null,
-  filters: { c: 0, m: 0, y: 0 },
+  filters: { c: 0, m: 0, y: 0, d: 0 },
 };
 
 const el = {
@@ -17,7 +17,6 @@ const el = {
   manualMode: document.querySelector("#manualMode"),
   autoMode: document.querySelector("#autoMode"),
   resetFilters: document.querySelector("#resetFilters"),
-  normalizePack: document.querySelector("#normalizePack"),
   cameraMessage: document.querySelector("#cameraMessage"),
   video: document.querySelector("#camera"),
   rawCanvas: document.querySelector("#rawCanvas"),
@@ -26,22 +25,26 @@ const el = {
   filteredSwatch: document.querySelector("#filteredSwatch"),
   rawReadout: document.querySelector("#rawReadout"),
   filteredReadout: document.querySelector("#filteredReadout"),
+  filterMove: document.querySelector("#filterMove"),
   deltaPack: document.querySelector("#deltaPack"),
+  myCorrection: document.querySelector("#myCorrection"),
   recommendedPack: document.querySelector("#recommendedPack"),
   viewingStops: document.querySelector("#viewingStops"),
   packStops: document.querySelector("#packStops"),
-  currentC: document.querySelector("#currentC"),
+  cyanHandling: document.querySelector("#cyanHandling"),
   currentM: document.querySelector("#currentM"),
   currentY: document.querySelector("#currentY"),
   sliders: {
     c: document.querySelector("#cyan"),
     m: document.querySelector("#magenta"),
     y: document.querySelector("#yellow"),
+    d: document.querySelector("#density"),
   },
   numbers: {
     c: document.querySelector("#cyanNumber"),
     m: document.querySelector("#magentaNumber"),
     y: document.querySelector("#yellowNumber"),
+    d: document.querySelector("#densityNumber"),
   },
 };
 
@@ -56,7 +59,7 @@ function roundPack(value) {
   return Math.round(value * 2) / 2;
 }
 
-function readNumber(input) {
+function readPackNumber(input) {
   return roundPack(clamp(Number.parseFloat(input.value), 0, 300));
 }
 
@@ -77,6 +80,27 @@ function formatPack(pack) {
   return `C ${roundPack(pack.c)} / M ${roundPack(pack.m)} / Y ${roundPack(pack.y)}`;
 }
 
+function formatMyPack(pack) {
+  return `M ${roundPack(pack.m)} / Y ${roundPack(pack.y)}`;
+}
+
+function formatSignedFilter(value, label) {
+  const rounded = roundPack(value);
+  const sign = rounded > 0 ? "+" : "";
+  return `${sign}${rounded}${label}`;
+}
+
+function formatDarkroomMove(move) {
+  return `Add ${formatSignedFilter(move.y, "Y")} and ${formatSignedFilter(move.m, "M")}`;
+}
+
+function viewingFiltersToMyMove(filters) {
+  return {
+    m: roundPack(filters.c - filters.m),
+    y: roundPack(filters.c - filters.y),
+  };
+}
+
 function rgbCss(rgb) {
   if (!rgb) return "#202420";
   return `rgb(${Math.round(rgb.r)} ${Math.round(rgb.g)} ${Math.round(rgb.b)})`;
@@ -89,16 +113,19 @@ function rgbReadout(rgb) {
 
 function filteredRgb(rgb, filters = state.filters) {
   if (!rgb) return null;
+  const td = transmission(filters.d);
   return {
-    r: rgb.r * transmission(filters.c),
-    g: rgb.g * transmission(filters.m),
-    b: rgb.b * transmission(filters.y),
+    r: rgb.r * transmission(filters.c) * td,
+    g: rgb.g * transmission(filters.m) * td,
+    b: rgb.b * transmission(filters.y) * td,
   };
 }
 
 function setFilters(nextFilters) {
-  for (const key of ["c", "m", "y"]) {
-    const value = roundPack(clamp(Number.parseFloat(nextFilters[key]), 0, 300));
+  for (const key of ["c", "m", "y", "d"]) {
+    const min = key === "d" ? -120 : 0;
+    const rawValue = key in nextFilters ? nextFilters[key] : state.filters[key];
+    const value = roundPack(clamp(Number.parseFloat(rawValue), min, 300));
     state.filters[key] = value;
     el.sliders[key].value = Math.min(value, Number(el.sliders[key].max));
     el.numbers[key].value = roundPack(value);
@@ -162,39 +189,48 @@ function updateSwatches() {
 }
 
 function updateCalculations() {
-  const delta = { ...state.filters };
+  const delta = {
+    c: state.filters.c,
+    m: state.filters.m,
+    y: state.filters.y,
+  };
+  const density = state.filters.d;
   const current = {
-    c: readNumber(el.currentC),
-    m: readNumber(el.currentM),
-    y: readNumber(el.currentY),
+    m: readPackNumber(el.currentM),
+    y: readPackNumber(el.currentY),
   };
-  const fullPack = {
-    c: current.c + delta.c,
-    m: current.m + delta.m,
-    y: current.y + delta.y,
+  const move = viewingFiltersToMyMove(delta);
+  const unclampedPack = {
+    m: current.m + move.m,
+    y: current.y + move.y,
   };
-  const commonDensity = el.normalizePack.checked
-    ? Math.min(fullPack.c, fullPack.m, fullPack.y)
-    : 0;
+  const under = ["m", "y"]
+    .filter((key) => unclampedPack[key] < 0)
+    .map((key) => `${key.toUpperCase()} ${roundPack(unclampedPack[key])}`);
   const recommended = {
-    c: Math.max(0, fullPack.c - commonDensity),
-    m: Math.max(0, fullPack.m - commonDensity),
-    y: Math.max(0, fullPack.y - commonDensity),
+    m: Math.max(0, unclampedPack.m),
+    y: Math.max(0, unclampedPack.y),
   };
+  const cyanHandling = under.length
+    ? `C is not dialed; ${under.join(" / ")} under range`
+    : `C is not dialed; C viewing adds equal M/Y`;
 
   const lumaTransmission =
-    LUMA.r * transmission(delta.c) +
-    LUMA.g * transmission(delta.m) +
-    LUMA.b * transmission(delta.y);
+    LUMA.r * transmission(delta.c + density) +
+    LUMA.g * transmission(delta.m + density) +
+    LUMA.b * transmission(delta.y + density);
   const viewingStops = stopsFromTransmission(lumaTransmission);
-  const currentNeutral = Math.min(current.c, current.m, current.y);
-  const finalNeutral = Math.min(recommended.c, recommended.m, recommended.y);
-  const neutralStops = (finalNeutral - currentNeutral) / CC_PER_STOP;
+  const densityStops = density / CC_PER_STOP;
+  const densityMultiplier = 2 ** densityStops;
 
+  const moveText = formatDarkroomMove(move);
+  el.filterMove.value = moveText;
   el.deltaPack.value = formatPack(delta);
-  el.recommendedPack.value = formatPack(recommended);
+  el.myCorrection.value = moveText;
+  el.recommendedPack.value = formatMyPack(recommended);
   el.viewingStops.value = `${formatStops(viewingStops)} (${(1 / lumaTransmission).toFixed(2)}x)`;
-  el.packStops.value = `${formatStops(neutralStops)} exposure time`;
+  el.packStops.value = `${formatStops(densityStops)} (${densityMultiplier.toFixed(2)}x time)`;
+  el.cyanHandling.value = cyanHandling;
   updateSwatches();
 }
 
@@ -239,9 +275,10 @@ function sampleCenter(imageData) {
 
 function applyViewingFilter(imageData) {
   const data = imageData.data;
-  const tc = transmission(state.filters.c);
-  const tm = transmission(state.filters.m);
-  const ty = transmission(state.filters.y);
+  const td = transmission(state.filters.d);
+  const tc = transmission(state.filters.c) * td;
+  const tm = transmission(state.filters.m) * td;
+  const ty = transmission(state.filters.y) * td;
 
   for (let i = 0; i < data.length; i += 4) {
     data[i] *= tc;
@@ -305,19 +342,23 @@ async function startCamera() {
   }
 }
 
-for (const key of ["c", "m", "y"]) {
+for (const key of ["c", "m", "y", "d"]) {
   el.sliders[key].addEventListener("input", () => {
-    enterManualMode();
+    if (key !== "d") {
+      enterManualMode();
+    }
     setFilters({ ...state.filters, [key]: el.sliders[key].value });
   });
 
   el.numbers[key].addEventListener("input", () => {
-    enterManualMode();
+    if (key !== "d") {
+      enterManualMode();
+    }
     setFilters({ ...state.filters, [key]: el.numbers[key].value });
   });
 }
 
-for (const input of [el.currentC, el.currentM, el.currentY, el.normalizePack]) {
+for (const input of [el.currentM, el.currentY]) {
   input.addEventListener("input", updateCalculations);
   input.addEventListener("change", updateCalculations);
 }
@@ -337,7 +378,7 @@ el.autoBalance.addEventListener("click", () => {
 
 el.resetFilters.addEventListener("click", () => {
   setMode("manual");
-  setFilters({ c: 0, m: 0, y: 0 });
+  setFilters({ c: 0, m: 0, y: 0, d: 0 });
 });
 
 el.manualMode.addEventListener("change", () => {
@@ -357,6 +398,6 @@ if (!navigator.mediaDevices?.getUserMedia) {
   el.cameraMessage.textContent = "This browser does not expose camera access to web pages.";
 }
 
-setFilters({ c: 0, m: 0, y: 0 });
+setFilters({ c: 0, m: 0, y: 0, d: 0 });
 updateModeControls();
 requestAnimationFrame(drawFrame);

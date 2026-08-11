@@ -83,6 +83,16 @@
             <input id="yellow" type="range" min="0" max="170" step="0.5" value="0">
             <input id="yellowNumber" type="number" min="0" max="300" step="0.5" value="0" inputmode="decimal">
           </div>
+          <div class="slider-row density-filter">
+            <label for="density">Density</label>
+            <input id="density" type="range" min="-60" max="120" step="0.5" value="0">
+            <input id="densityNumber" type="number" min="-120" max="300" step="0.5" value="0" inputmode="decimal">
+          </div>
+
+          <div class="filter-action">
+            <span>Darkroom move</span>
+            <output id="filterMove">Add 0Y and 0M</output>
+          </div>
 
           <div class="button-line">
             <button id="resetFilters" type="button">Reset filters</button>
@@ -100,11 +110,7 @@
             </div>
           </div>
 
-          <div class="pack-grid" aria-label="Current filter pack">
-            <label>
-              <span>Current C</span>
-              <input id="currentC" type="number" min="0" max="300" step="0.5" value="0" inputmode="decimal">
-            </label>
+          <div class="pack-grid two-up" aria-label="Current filter pack">
             <label>
               <span>Current M</span>
               <input id="currentM" type="number" min="0" max="300" step="0.5" value="0" inputmode="decimal">
@@ -115,34 +121,37 @@
             </label>
           </div>
 
-          <label class="toggle full-width">
-            <input id="normalizePack" type="checkbox" checked>
-            <span>Remove common CMY density</span>
-          </label>
-
           <div class="results">
             <div>
-              <span>Correction to add</span>
+              <span>Viewing filters</span>
               <output id="deltaPack">C 0 / M 0 / Y 0</output>
             </div>
             <div>
-              <span>Recommended pack</span>
-              <output id="recommendedPack">C 0 / M 0 / Y 0</output>
+              <span>M/Y correction</span>
+              <output id="myCorrection">Add 0Y and 0M</output>
+            </div>
+            <div>
+              <span>Recommended M/Y pack</span>
+              <output id="recommendedPack">M 0 / Y 0</output>
             </div>
             <div>
               <span>Viewing light loss</span>
               <output id="viewingStops">0.00 stops</output>
             </div>
             <div>
-              <span>Pack time compensation</span>
+              <span>Density time compensation</span>
               <output id="packStops">0.00 stops</output>
+            </div>
+            <div>
+              <span>RA-4 cyan handling</span>
+              <output id="cyanHandling">C is translated into equal M/Y moves</output>
             </div>
           </div>
         </section>
 
         <section class="panel notes">
           <h2>Use</h2>
-          <p>Point the camera at a neutral gray or white patch on the print. Use Manual to enter CMY values, tap Sample once, or switch to Auto to follow the center patch continuously. Add the displayed correction to the enlarger pack, then run a confirmation strip.</p>
+          <p>Point the camera at a neutral gray or white patch on the print. Use Manual to enter CMY viewing filters and Density, tap Sample once, or switch to Auto to follow the center patch continuously. Make only the displayed M/Y enlarger move, then run a confirmation strip.</p>
           <p>The math uses ideal CC density filters. Actual RA-4 papers, color heads, lenses, lamps, and camera white balance vary, so treat the result as a fast starting pack.</p>
         </section>
       </section>
