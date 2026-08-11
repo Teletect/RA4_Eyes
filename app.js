@@ -6,7 +6,6 @@ const state = {
   running: false,
   frozen: false,
   mode: "manual",
-  heldSample: null,
   lastSample: null,
   filters: { c: 0, m: 0, y: 0 },
 };
@@ -18,7 +17,6 @@ const el = {
   manualMode: document.querySelector("#manualMode"),
   autoMode: document.querySelector("#autoMode"),
   resetFilters: document.querySelector("#resetFilters"),
-  lockSample: document.querySelector("#lockSample"),
   normalizePack: document.querySelector("#normalizePack"),
   cameraMessage: document.querySelector("#cameraMessage"),
   video: document.querySelector("#camera"),
@@ -55,11 +53,11 @@ function clamp(value, min, max) {
 }
 
 function roundPack(value) {
-  return Math.round(value * 10) / 10;
+  return Math.round(value * 2) / 2;
 }
 
 function readNumber(input) {
-  return clamp(Number.parseFloat(input.value), 0, 300);
+  return roundPack(clamp(Number.parseFloat(input.value), 0, 300));
 }
 
 function transmission(cc) {
@@ -100,7 +98,7 @@ function filteredRgb(rgb, filters = state.filters) {
 
 function setFilters(nextFilters) {
   for (const key of ["c", "m", "y"]) {
-    const value = clamp(Number.parseFloat(nextFilters[key]), 0, 300);
+    const value = roundPack(clamp(Number.parseFloat(nextFilters[key]), 0, 300));
     state.filters[key] = value;
     el.sliders[key].value = Math.min(value, Number(el.sliders[key].max));
     el.numbers[key].value = roundPack(value);
@@ -109,7 +107,7 @@ function setFilters(nextFilters) {
 }
 
 function hasSample() {
-  return Boolean(state.heldSample || state.lastSample);
+  return Boolean(state.lastSample);
 }
 
 function updateModeControls() {
@@ -128,7 +126,7 @@ function setMode(mode) {
   updateModeControls();
 
   if (state.mode === "auto" && hasSample()) {
-    setFilters(sampleToViewingFilters(state.heldSample || state.lastSample));
+    setFilters(sampleToViewingFilters(state.lastSample));
   }
 }
 
@@ -154,7 +152,7 @@ function sampleToViewingFilters(sample) {
 }
 
 function updateSwatches() {
-  const sample = state.heldSample || state.lastSample;
+  const sample = state.lastSample;
   const filtered = filteredRgb(sample);
 
   el.rawSwatch.style.background = rgbCss(sample);
@@ -262,11 +260,9 @@ function drawFrame() {
 
   if (el.rawCanvas.width && el.rawCanvas.height) {
     const imageData = rawCtx.getImageData(0, 0, el.rawCanvas.width, el.rawCanvas.height);
-    if (!el.lockSample.checked) {
-      state.lastSample = sampleCenter(imageData);
-    }
+    state.lastSample = sampleCenter(imageData);
     if (state.mode === "auto" && hasSample()) {
-      setFilters(sampleToViewingFilters(state.heldSample || state.lastSample));
+      setFilters(sampleToViewingFilters(state.lastSample));
     } else {
       updateModeControls();
     }
@@ -300,7 +296,7 @@ async function startCamera() {
 
     el.startCamera.textContent = "Restart camera";
     el.freezeFrame.disabled = false;
-    el.freezeFrame.textContent = "Freeze";
+    el.freezeFrame.textContent = "Hold image";
     el.cameraMessage.hidden = true;
     updateModeControls();
   } catch (error) {
@@ -330,11 +326,11 @@ el.startCamera.addEventListener("click", startCamera);
 
 el.freezeFrame.addEventListener("click", () => {
   state.frozen = !state.frozen;
-  el.freezeFrame.textContent = state.frozen ? "Live" : "Freeze";
+  el.freezeFrame.textContent = state.frozen ? "Live image" : "Hold image";
 });
 
 el.autoBalance.addEventListener("click", () => {
-  const sample = state.heldSample || state.lastSample;
+  const sample = state.lastSample;
   setMode("manual");
   setFilters(sampleToViewingFilters(sample));
 });
@@ -342,15 +338,6 @@ el.autoBalance.addEventListener("click", () => {
 el.resetFilters.addEventListener("click", () => {
   setMode("manual");
   setFilters({ c: 0, m: 0, y: 0 });
-});
-
-el.lockSample.addEventListener("change", () => {
-  state.heldSample = el.lockSample.checked ? state.lastSample : null;
-  if (state.mode === "auto" && hasSample()) {
-    setFilters(sampleToViewingFilters(state.heldSample || state.lastSample));
-  }
-  updateModeControls();
-  updateSwatches();
 });
 
 el.manualMode.addEventListener("change", () => {
