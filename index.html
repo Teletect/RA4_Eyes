@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#131614">
+    <title>RA4 Eyes</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="viewer" aria-label="Camera viewer">
+        <div class="viewer-top">
+          <div>
+            <p class="eyebrow">RA-4 color print viewing filter simulator</p>
+            <h1>RA4 Eyes</h1>
+          </div>
+          <div class="camera-actions">
+            <button id="startCamera" class="primary" type="button">Start camera</button>
+            <button id="freezeFrame" type="button" disabled>Freeze</button>
+          </div>
+        </div>
+
+        <div class="stage" id="stage">
+          <video id="camera" playsinline muted></video>
+          <canvas id="rawCanvas" hidden></canvas>
+          <canvas id="viewCanvas" aria-label="Filtered camera image"></canvas>
+          <div class="sample-reticle" aria-hidden="true">
+            <span></span>
+          </div>
+          <div id="cameraMessage" class="camera-message">
+            Camera access needs HTTPS, localhost, or GitHub Pages. Start the camera, then place a neutral area inside the square.
+          </div>
+        </div>
+
+        <div class="swatches" aria-label="Sample color swatches">
+          <div>
+            <span>Raw sample</span>
+            <b id="rawSwatch"></b>
+            <output id="rawReadout">--</output>
+          </div>
+          <div>
+            <span>Filtered sample</span>
+            <b id="filteredSwatch"></b>
+            <output id="filteredReadout">--</output>
+          </div>
+        </div>
+      </section>
+
+      <aside class="controls" aria-label="Filter controls">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Viewing filters</p>
+              <h2>Simulated CMY pack</h2>
+            </div>
+            <button id="autoBalance" type="button" disabled>Sample</button>
+          </div>
+
+          <div class="mode-switch" role="radiogroup" aria-label="Filter mode">
+            <label>
+              <input id="manualMode" type="radio" name="filterMode" value="manual" checked>
+              <span>Manual</span>
+            </label>
+            <label>
+              <input id="autoMode" type="radio" name="filterMode" value="auto">
+              <span>Auto</span>
+            </label>
+          </div>
+
+          <div class="slider-row c-filter">
+            <label for="cyan">Cyan</label>
+            <input id="cyan" type="range" min="0" max="170" value="0">
+            <input id="cyanNumber" type="number" min="0" max="300" value="0" inputmode="decimal">
+          </div>
+          <div class="slider-row m-filter">
+            <label for="magenta">Magenta</label>
+            <input id="magenta" type="range" min="0" max="170" value="0">
+            <input id="magentaNumber" type="number" min="0" max="300" value="0" inputmode="decimal">
+          </div>
+          <div class="slider-row y-filter">
+            <label for="yellow">Yellow</label>
+            <input id="yellow" type="range" min="0" max="170" value="0">
+            <input id="yellowNumber" type="number" min="0" max="300" value="0" inputmode="decimal">
+          </div>
+
+          <div class="button-line">
+            <button id="resetFilters" type="button">Reset filters</button>
+            <label class="toggle">
+              <input id="lockSample" type="checkbox">
+              <span>Hold sample</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Darkroom calculator</p>
+              <h2>Filter pack values</h2>
+            </div>
+          </div>
+
+          <div class="pack-grid" aria-label="Current filter pack">
+            <label>
+              <span>Current C</span>
+              <input id="currentC" type="number" min="0" max="300" value="0" inputmode="decimal">
+            </label>
+            <label>
+              <span>Current M</span>
+              <input id="currentM" type="number" min="0" max="300" value="0" inputmode="decimal">
+            </label>
+            <label>
+              <span>Current Y</span>
+              <input id="currentY" type="number" min="0" max="300" value="0" inputmode="decimal">
+            </label>
+          </div>
+
+          <label class="toggle full-width">
+            <input id="normalizePack" type="checkbox" checked>
+            <span>Remove common CMY density</span>
+          </label>
+
+          <div class="results">
+            <div>
+              <span>Correction to add</span>
+              <output id="deltaPack">C 0 / M 0 / Y 0</output>
+            </div>
+            <div>
+              <span>Recommended pack</span>
+              <output id="recommendedPack">C 0 / M 0 / Y 0</output>
+            </div>
+            <div>
+              <span>Viewing light loss</span>
+              <output id="viewingStops">0.00 stops</output>
+            </div>
+            <div>
+              <span>Pack time compensation</span>
+              <output id="packStops">0.00 stops</output>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel notes">
+          <h2>Use</h2>
+          <p>Point the camera at a neutral gray or white patch on the print. Use Manual to enter CMY values, tap Sample once, or switch to Auto to follow the center patch continuously. Add the displayed correction to the enlarger pack, then run a confirmation strip.</p>
+          <p>The math uses ideal CC density filters. Actual RA-4 papers, color heads, lenses, lamps, and camera white balance vary, so treat the result as a fast starting pack.</p>
+        </section>
+      </aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
