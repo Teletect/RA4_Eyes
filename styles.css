@@ -327,15 +327,19 @@ output {
 
 .slider-row {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr) 64px;
   align-items: center;
-  gap: 8px;
+  gap: 5px 8px;
   margin-top: 12px;
 }
 
 .slider-row label {
   font-size: 0.85rem;
   font-weight: 750;
+}
+
+.slider-row input[type="range"] {
+  grid-column: 1 / -1;
 }
 
 input[type="range"] {
@@ -542,8 +546,8 @@ input[readonly] {
   }
 
   .slider-row {
-    grid-template-columns: 42px minmax(0, 1fr) 52px;
-    gap: 6px;
+    grid-template-columns: minmax(0, 1fr) 52px;
+    gap: 4px 6px;
     margin-top: 10px;
   }
 

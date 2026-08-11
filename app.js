@@ -127,8 +127,12 @@ function setFilters(nextFilters) {
     const rawValue = key in nextFilters ? nextFilters[key] : state.filters[key];
     const value = roundPack(clamp(Number.parseFloat(rawValue), min, 300));
     state.filters[key] = value;
-    el.sliders[key].value = Math.min(value, Number(el.sliders[key].max));
-    el.numbers[key].value = roundPack(value);
+    if (el.sliders[key]) {
+      el.sliders[key].value = Math.min(value, Number(el.sliders[key].max));
+    }
+    if (el.numbers[key]) {
+      el.numbers[key].value = roundPack(value);
+    }
   }
   updateCalculations();
 }
@@ -224,14 +228,20 @@ function updateCalculations() {
   const densityMultiplier = 2 ** densityStops;
 
   const moveText = formatDarkroomMove(move);
-  el.filterMove.value = moveText;
-  el.deltaPack.value = formatPack(delta);
-  el.myCorrection.value = moveText;
-  el.recommendedPack.value = formatMyPack(recommended);
-  el.viewingStops.value = `${formatStops(viewingStops)} (${(1 / lumaTransmission).toFixed(2)}x)`;
-  el.packStops.value = `${formatStops(densityStops)} (${densityMultiplier.toFixed(2)}x time)`;
-  el.cyanHandling.value = cyanHandling;
+  setOutput(el.filterMove, moveText);
+  setOutput(el.deltaPack, formatPack(delta));
+  setOutput(el.myCorrection, moveText);
+  setOutput(el.recommendedPack, formatMyPack(recommended));
+  setOutput(el.viewingStops, `${formatStops(viewingStops)} (${(1 / lumaTransmission).toFixed(2)}x)`);
+  setOutput(el.packStops, `${formatStops(densityStops)} (${densityMultiplier.toFixed(2)}x time)`);
+  setOutput(el.cyanHandling, cyanHandling);
   updateSwatches();
+}
+
+function setOutput(output, value) {
+  if (output) {
+    output.value = value;
+  }
 }
 
 function fitCanvasToVideo() {
@@ -311,25 +321,38 @@ function drawFrame() {
 }
 
 async function startCamera() {
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+    el.cameraMessage.hidden = false;
+    el.cameraMessage.textContent = "Camera access needs HTTPS, localhost, or GitHub Pages.";
+    return;
+  }
+
   if (state.stream) {
     state.stream.getTracks().forEach((track) => track.stop());
   }
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-      audio: false,
-    });
+    const stream = await openCameraStream();
 
     state.stream = stream;
     state.running = true;
     state.frozen = false;
+    el.video.muted = true;
+    el.video.playsInline = true;
     el.video.srcObject = stream;
-    await el.video.play();
+
+    try {
+      await el.video.play();
+    } catch {
+      // Some mobile browsers resolve frames after metadata even when play() is fussy.
+      await new Promise((resolve) => {
+        if (el.video.readyState >= 1) {
+          resolve();
+          return;
+        }
+        el.video.addEventListener("loadedmetadata", resolve, { once: true });
+      });
+    }
 
     el.startCamera.textContent = "Restart camera";
     el.freezeFrame.disabled = false;
@@ -342,7 +365,45 @@ async function startCamera() {
   }
 }
 
+async function openCameraStream() {
+  const constraints = [
+    {
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    },
+    {
+      video: {
+        facingMode: "environment",
+      },
+      audio: false,
+    },
+    {
+      video: true,
+      audio: false,
+    },
+  ];
+
+  let lastError;
+  for (const constraint of constraints) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraint);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
 for (const key of ["c", "m", "y", "d"]) {
+  if (!el.sliders[key] || !el.numbers[key]) {
+    continue;
+  }
+
   el.sliders[key].addEventListener("input", () => {
     if (key !== "d") {
       enterManualMode();
@@ -393,7 +454,7 @@ el.autoMode.addEventListener("change", () => {
   }
 });
 
-if (!navigator.mediaDevices?.getUserMedia) {
+if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
   el.startCamera.disabled = true;
   el.cameraMessage.textContent = "This browser does not expose camera access to web pages.";
 }
