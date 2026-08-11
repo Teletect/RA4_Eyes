@@ -366,7 +366,7 @@ input[type="range"] {
 
 .filter-action {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   margin-top: 12px;
   padding: 9px;
   border: 1px solid rgba(167, 215, 118, 0.38);
@@ -382,10 +382,16 @@ input[type="range"] {
   text-transform: uppercase;
 }
 
-.filter-action output {
+.filter-action output:first-of-type {
   color: #f5f2e9;
   font-size: clamp(0.95rem, 3vw, 1.15rem);
   font-weight: 800;
+}
+
+.filter-action output:last-of-type {
+  color: #e7dfcf;
+  font-size: clamp(0.78rem, 2.4vw, 0.92rem);
+  font-weight: 700;
 }
 
 input[type="number"] {

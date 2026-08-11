@@ -26,6 +26,7 @@ const el = {
   rawReadout: document.querySelector("#rawReadout"),
   filteredReadout: document.querySelector("#filteredReadout"),
   filterMove: document.querySelector("#filterMove"),
+  exposureMove: document.querySelector("#exposureMove"),
   deltaPack: document.querySelector("#deltaPack"),
   myCorrection: document.querySelector("#myCorrection"),
   recommendedPack: document.querySelector("#recommendedPack"),
@@ -92,6 +93,11 @@ function formatSignedFilter(value, label) {
 
 function formatDarkroomMove(move) {
   return `Add ${formatSignedFilter(move.y, "Y")} and ${formatSignedFilter(move.m, "M")}`;
+}
+
+function formatExposureMove(stops, multiplier) {
+  const lensStops = -stops;
+  return `Time x${multiplier.toFixed(2)} or lens ${formatStops(lensStops)}`;
 }
 
 function viewingFiltersToMyMove(filters) {
@@ -228,12 +234,14 @@ function updateCalculations() {
   const densityMultiplier = 2 ** densityStops;
 
   const moveText = formatDarkroomMove(move);
+  const exposureText = formatExposureMove(densityStops, densityMultiplier);
   setOutput(el.filterMove, moveText);
+  setOutput(el.exposureMove, exposureText);
   setOutput(el.deltaPack, formatPack(delta));
   setOutput(el.myCorrection, moveText);
   setOutput(el.recommendedPack, formatMyPack(recommended));
   setOutput(el.viewingStops, `${formatStops(viewingStops)} (${(1 / lumaTransmission).toFixed(2)}x)`);
-  setOutput(el.packStops, `${formatStops(densityStops)} (${densityMultiplier.toFixed(2)}x time)`);
+  setOutput(el.packStops, exposureText);
   setOutput(el.cyanHandling, cyanHandling);
   updateSwatches();
 }
